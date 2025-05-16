@@ -19,13 +19,10 @@ $api = new Api($razorpay_key_id, $razorpay_key_secret);
 $payment_id = $input['razorpay_payment_id'];
 
 try {
-    // Verify payment signature if you have order_id and signature - for simplicity, verify payment status:
     $payment = $api->payment->fetch($payment_id);
 
     if ($payment->status == 'captured') {
-        // Payment is successful, save to DB
-
-        // Database connection
+        // Save booking to DB
         $pdo = new PDO('mysql:host=localhost;dbname=your_db;charset=utf8', 'db_user', 'db_pass');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
