@@ -1,6 +1,5 @@
 <?php
-// Your Razorpay Key IDs (replace with your own keys)
-$razorpay_key_id = 'rzp_test_yourkeyid';
+$razorpay_key_id = 'rzp_test_yourkeyid'; // Replace with your Razorpay key ID
 ?>
 
 <!DOCTYPE html>
@@ -20,7 +19,7 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
 
     <section class="bg-white rounded-lg shadow p-10">
       <h1 class="text-4xl font-bold mb-6 text-blue-700 text-center">Book a Service</h1>
-      <form id="serviceForm" class="space-y-6">
+      <form id="serviceForm" class="space-y-6" onsubmit="return false;">
 
         <div>
           <label for="name" class="block font-semibold mb-2 text-gray-700">Name</label>
@@ -39,15 +38,15 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
           <select id="service" name="service" required
             class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="" disabled selected>Select a service</option>
-            <option value="internet" data-price="50">Internet Access - ₹50/hour</option>
-            <option value="gaming" data-price="150">Gaming PC - ₹150/hour</option>
-            <option value="printing" data-price="10">Printing - ₹10/page</option>
+            <option value="Internet Access" data-price="50">Internet Access - ₹50/hour</option>
+            <option value="Gaming PC" data-price="150">Gaming PC - ₹150/hour</option>
+            <option value="Printing" data-price="10">Printing - ₹10/page</option>
           </select>
         </div>
 
         <div>
-          <label for="hours" class="block font-semibold mb-2 text-gray-700">Hours / Quantity</label>
-          <input type="number" id="hours" name="hours" min="1" value="1" required
+          <label for="quantity" class="block font-semibold mb-2 text-gray-700">Hours / Quantity</label>
+          <input type="number" id="quantity" name="quantity" min="1" value="1" required
             class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
@@ -68,27 +67,37 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
 
   <script>
     const serviceSelect = document.getElementById('service');
-    const hoursInput = document.getElementById('hours');
+    const quantityInput = document.getElementById('quantity');
     const totalPriceSpan = document.getElementById('totalPrice');
     const payButton = document.getElementById('payButton');
 
     function calculatePrice() {
       const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
       const pricePerUnit = selectedOption ? parseInt(selectedOption.getAttribute('data-price')) : 0;
-      const quantity = parseInt(hoursInput.value) || 0;
+      const quantity = parseInt(quantityInput.value) || 0;
       const total = pricePerUnit * quantity;
       totalPriceSpan.textContent = total > 0 ? total : 0;
-      payButton.disabled = total <= 0;
+      payButton.disabled = total <= 0 || !serviceSelect.value || !quantity;
       return total;
     }
 
     serviceSelect.addEventListener('change', calculatePrice);
-    hoursInput.addEventListener('input', calculatePrice);
+    quantityInput.addEventListener('input', calculatePrice);
 
     payButton.addEventListener('click', () => {
       const totalAmount = calculatePrice();
       if (totalAmount <= 0) {
         alert('Please select a valid service and quantity.');
+        return;
+      }
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const service = serviceSelect.value;
+      const quantity = quantityInput.value;
+
+      if (!name || !email || !service || !quantity) {
+        alert('Please fill all fields correctly.');
         return;
       }
 
@@ -99,12 +108,36 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
         "name": "Cyber Cafe",
         "description": "Service Payment",
         "handler": function (response){
-          alert('Payment successful. Razorpay Payment ID: ' + response.razorpay_payment_id);
-          // Here you can send payment info to your server to verify & record
+          // Send payment + booking info to backend verify script
+          const data = {
+            razorpay_payment_id: response.razorpay_payment_id,
+            name: name,
+            email: email,
+            service: service,
+            quantity: quantity,
+            amount: totalAmount
+          };
+
+          fetch('payment_verify.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(data)
+          })
+          .then(res => res.json())
+          .then(data => {
+            alert(data.message);
+            if(data.status === 'success'){
+              // Redirect to thank you page with booking info
+              window.location.href = `thankyou.php?name=${encodeURIComponent(name)}&service=${encodeURIComponent(service)}&quantity=${quantity}&amount=${totalAmount}`;
+            }
+          })
+          .catch(() => {
+            alert('Something went wrong. Please contact support.');
+          });
         },
         "prefill": {
-          "name": document.getElementById('name').value,
-          "email": document.getElementById('email').value,
+          "name": name,
+          "email": email,
         },
         "theme": {
           "color": "#2563eb"
@@ -116,33 +149,6 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
 
     // Initialize price on page load
     calculatePrice();
-    "handler": function (response){
-  // Prepare booking data
-  const data = {
-    razorpay_payment_id: response.razorpay_payment_id,
-    name: document.getElementById('name').value,
-    email: document.getElementById('email').value,
-    service: document.getElementById('service').value,
-    quantity: document.getElementById('hours').value,
-    amount: calculatePrice()
-  };
-
-  fetch('payment_verify.php', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: new URLSearchParams(data)
-  })
-  .then(res => res.json())
-  .then(data => {
-    alert(data.message);
-    if(data.status === 'success'){
-      window.location.href = 'thankyou.php'; // redirect or show success message
-    }
-  })
-  .catch(err => {
-    alert('Something went wrong. Please contact support.');
-  });
-},
   </script>
 
 </body>
