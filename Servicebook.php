@@ -116,6 +116,33 @@ $razorpay_key_id = 'rzp_test_yourkeyid';
 
     // Initialize price on page load
     calculatePrice();
+    "handler": function (response){
+  // Prepare booking data
+  const data = {
+    razorpay_payment_id: response.razorpay_payment_id,
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    service: document.getElementById('service').value,
+    quantity: document.getElementById('hours').value,
+    amount: calculatePrice()
+  };
+
+  fetch('payment_verify.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(data)
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message);
+    if(data.status === 'success'){
+      window.location.href = 'thankyou.php'; // redirect or show success message
+    }
+  })
+  .catch(err => {
+    alert('Something went wrong. Please contact support.');
+  });
+},
   </script>
 
 </body>
